@@ -5,6 +5,7 @@ template saves. The submodule location is discovered (repo-relative or via
 ``$MH_CONVERTER_DIR``) — never a hardcoded user path.
 """
 
+import importlib
 import os
 import sys
 
@@ -35,8 +36,9 @@ def _ensure_on_path():
 def load_api():
     """Import and return the converter's ``converter_api`` module."""
     _ensure_on_path()
-    from modules import converter_api  # noqa: E402  (path set above)
-    return converter_api
+    # Dynamic import: the ``modules`` package is only on sys.path at runtime
+    # (added by _ensure_on_path), so a static import can't be resolved.
+    return importlib.import_module("modules.converter_api")
 
 
 def blank_3ds_system():
