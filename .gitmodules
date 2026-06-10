@@ -1,0 +1,6 @@
+[submodule "save3ds/save3ds"]
+	path = save3ds/save3ds
+	url = https://github.com/landsharkYT/save3ds.git
+[submodule "MHXXGUSaveConvert/MHGU-MHXX-Save-Converter-Script"]
+	path = MHXXGUSaveConvert/MHGU-MHXX-Save-Converter-Script
+	url = https://github.com/landsharkYT/MHGU-MHXX-Save-Converter-Script.git
