@@ -74,12 +74,21 @@ def setup_profile(profile):
     profile.switch_game = (formats.SWITCH_GAME_MHGU if choice == 1
                            else formats.SWITCH_GAME_MHXX_SWITCH)
 
+    # DLC handling. The converter copies the output save's header (which carries
+    # DLC ownership) from a "blank" template. Bundled blanks are DLC-free; most
+    # users keep those and re-download DLC in-game. Only point at your own saves
+    # here to carry their DLC over.
     has_override = bool(profile.blank_3ds_system or profile.blank_switch_system)
-    if ui.confirm("Use custom DLC-bearing blank templates?", default=has_override):
-        profile.blank_3ds_system = _prompt_path("  3DS blank 'system'",
-                                                profile.blank_3ds_system) or None
-        profile.blank_switch_system = _prompt_path("  Switch blank 'system'",
-                                                   profile.blank_switch_system) or None
+    ui.info("DLC: by default the converted save uses bundled DLC-free templates "
+            "(you can re-download DLC in-game).")
+    if ui.confirm("Carry DLC over from your own save files instead? "
+                  "(advanced; most users: No)", default=has_override):
+        ui.info("Enter a path to a 'system' file that already owns the DLC, "
+                "or press Enter to use the bundled blank.")
+        profile.blank_3ds_system = _prompt_path(
+            "  3DS DLC source 'system' (Enter to skip)", profile.blank_3ds_system) or None
+        profile.blank_switch_system = _prompt_path(
+            "  Switch DLC source 'system' (Enter to skip)", profile.blank_switch_system) or None
     else:
         profile.blank_3ds_system = None
         profile.blank_switch_system = None
