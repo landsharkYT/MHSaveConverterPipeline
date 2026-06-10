@@ -13,9 +13,17 @@ APP_NAME = "mhsaveconverter"
 
 
 def config_dir():
-    """Base config directory, honouring ``XDG_CONFIG_HOME``."""
-    base = os.environ.get("XDG_CONFIG_HOME") or os.path.join(
-        os.path.expanduser("~"), ".config")
+    """Base config directory.
+
+    Windows: ``%APPDATA%\\mhsaveconverter``. Elsewhere: ``$XDG_CONFIG_HOME`` (or
+    ``~/.config``) ``/mhsaveconverter``.
+    """
+    if os.name == "nt":
+        base = os.environ.get("APPDATA") or os.path.join(
+            os.path.expanduser("~"), "AppData", "Roaming")
+    else:
+        base = os.environ.get("XDG_CONFIG_HOME") or os.path.join(
+            os.path.expanduser("~"), ".config")
     return os.path.join(base, APP_NAME)
 
 
