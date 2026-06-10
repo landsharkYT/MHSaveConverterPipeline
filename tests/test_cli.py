@@ -47,6 +47,30 @@ class UIDriver:
         return self.confirms.pop(0) if self.confirms else default
 
 
+def test_clean_path_plain():
+    assert cli._clean_path("/run/media/x/gm9/out/") == "/run/media/x/gm9/out/"
+
+
+def test_clean_path_double_quoted():
+    assert cli._clean_path('"/run/media/My Drive/out"') == "/run/media/My Drive/out"
+
+
+def test_clean_path_single_quoted():
+    assert cli._clean_path("'/a/b c/d'") == "/a/b c/d"
+
+
+def test_clean_path_backslash_escaped_space():
+    assert cli._clean_path(r"/a/My\ Drive/sub") == "/a/My Drive/sub"
+
+
+def test_clean_path_tilde_expands():
+    assert cli._clean_path("~/cfg") == os.path.join(os.path.expanduser("~"), "cfg")
+
+
+def test_clean_path_strips_surrounding_whitespace():
+    assert cli._clean_path("   /a/b   ") == "/a/b"
+
+
 def _valid_env(tmp_path):
     sd = tmp_path / "sd"
     sw = tmp_path / "switch"
