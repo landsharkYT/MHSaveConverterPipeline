@@ -1,0 +1,7 @@
+# Runtime deps for the mhpipeline wrapper (and the converter submodule it drives)
+art==6.1
+colorama==0.4.6
+sshkeyboard==2.3.1
+
+# Dev/test
+pytest>=8
