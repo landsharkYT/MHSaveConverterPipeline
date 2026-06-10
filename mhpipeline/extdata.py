@@ -1,9 +1,18 @@
 """Locate the MHXX SD extdata under a user-supplied SD root (never hardcoded).
 
 The SD root comes from the profile. We don't assume a specific console ID0/ID1
-or region — instead we detect the extdata by content: the leaf directory that
-holds ``00000003`` and ``00000004`` subfiles at the encrypted size. The 16-digit
-extdata id is read back from the path (``extdata/<high8>/<low8>``).
+or region — instead we detect the extdata by content: the directory that holds
+``00000003`` and ``00000004`` subfiles at the encrypted size. The 16-digit
+extdata id is read from the path: the two components right after ``extdata``
+(``extdata/<high8>/<low8>``).
+
+Real SD layout nests the numbered subfiles one level deeper, under a device
+directory:
+
+    extdata/<high>/<low>/00000000/0000000{1..4}
+
+so we look for the signature both directly in ``<low>`` and in its immediate
+subdirectories.
 """
 
 import glob
@@ -25,7 +34,7 @@ class ExtdataError(Exception):
 
 @dataclass
 class ExtdataLocation:
-    path: str   # leaf directory holding the numbered subfiles
+    path: str   # directory holding the numbered subfiles
     high: str   # 8-hex high word of the extdata id
     low: str    # 8-hex low word of the extdata id
 
@@ -48,44 +57,51 @@ def _is_hex8(value):
     return len(value) == 8 and all(c in _HEX for c in value)
 
 
-def _id_words(directory):
-    """Best-effort (high, low) from ``.../extdata/<high>/<low>`` layout."""
-    low = os.path.basename(directory)
-    parent = os.path.basename(os.path.dirname(directory))
-    high = parent if _is_hex8(parent) else "00000000"
-    if not _is_hex8(low):
-        low = "00000000"
-    return high, low
+def _subdirs(directory):
+    try:
+        names = os.listdir(directory)
+    except OSError:
+        return []
+    return [os.path.join(directory, n) for n in sorted(names)
+            if os.path.isdir(os.path.join(directory, n))]
+
+
+def _scan_extdata_dir(extdata_dir):
+    """Yield ExtdataLocation for every MHXX extdata under one ``extdata`` dir."""
+    for high_path in _subdirs(extdata_dir):
+        high = os.path.basename(high_path)
+        if not _is_hex8(high):
+            continue
+        for low_path in _subdirs(high_path):
+            low = os.path.basename(low_path)
+            if not _is_hex8(low):
+                continue
+            # Signature files may sit directly in <low> or one level deeper
+            # (the device directory, e.g. <low>/00000000/).
+            for leaf in [low_path] + _subdirs(low_path):
+                if _looks_like_mhxx_extdata(leaf):
+                    yield ExtdataLocation(leaf, high, low)
+                    break  # one device dir per extdata
 
 
 def find_mhxx_extdata(sd_root):
-    """Return all MHXX-extdata leaf locations found under ``sd_root``.
+    """Return all MHXX-extdata locations found under ``sd_root``.
 
-    Tries the standard SD layout first, then a couple of looser patterns so a
-    user can point ``sd_root`` slightly deeper. Matching is by content, so the
-    looser patterns can't produce false positives.
+    Detection is by content, so the looser patterns can't yield false positives.
     """
     if not os.path.isdir(sd_root):
         raise ExtdataError("SD root does not exist: %s" % sd_root)
 
-    patterns = [
-        os.path.join(sd_root, "Nintendo 3DS", "*", "*", "extdata", "*", "*"),
-        os.path.join(sd_root, "extdata", "*", "*"),
-        os.path.join(sd_root, "*", "*"),
-    ]
-    seen = set()
+    extdata_dirs = []
+    extdata_dirs += glob.glob(os.path.join(sd_root, "Nintendo 3DS", "*", "*", "extdata"))
+    extdata_dirs += glob.glob(os.path.join(sd_root, "extdata"))  # sd_root pointed deeper
+
     found = []
-    for pattern in patterns:
-        for directory in sorted(glob.glob(pattern)):
-            real = os.path.realpath(directory)
-            if real in seen:
-                continue
-            seen.add(real)
-            if _looks_like_mhxx_extdata(directory):
-                high, low = _id_words(directory)
-                found.append(ExtdataLocation(directory, high, low))
-    # Allow sd_root itself to be the leaf (e.g. a loose numbered-file folder).
-    if _looks_like_mhxx_extdata(sd_root):
-        high, low = _id_words(sd_root)
-        found.append(ExtdataLocation(sd_root, high, low))
+    seen = set()
+    for extdata_dir in sorted(set(extdata_dirs)):
+        for loc in _scan_extdata_dir(extdata_dir):
+            real = os.path.realpath(loc.path)
+            if real not in seen:
+                seen.add(real)
+                found.append(loc)
     return found
