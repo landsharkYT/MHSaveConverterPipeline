@@ -6,6 +6,7 @@ convert flows, behind a loud overwrite warning + confirmation + auto-backup.
 """
 
 import os
+import re
 
 from mhpipeline import convert
 from mhpipeline import deps
@@ -21,10 +22,23 @@ from mhpipeline.profile import Profile
 # --------------------------------------------------------------------------- #
 # small helpers
 # --------------------------------------------------------------------------- #
+def _clean_path(raw):
+    """Normalise a pasted/dragged path: strip wrapping quotes, undo backslash
+    escapes (e.g. 'My\\ Drive'), and expand '~'."""
+    s = raw.strip()
+    if len(s) >= 2 and s[0] == s[-1] and s[0] in ("'", '"'):
+        s = s[1:-1]  # quoted: contents are literal
+    else:
+        s = re.sub(r"\\(.)", r"\1", s)  # unquoted: drop shell-style escapes
+    return os.path.expanduser(s)
+
+
 def _prompt_path(label, current):
     shown = " [%s]" % current if current else ""
     value = ui.prompt("%s%s:" % (label, shown)).strip()
-    return value or current
+    if not value:
+        return current
+    return _clean_path(value)
 
 
 def _key_picker(key_sets):
