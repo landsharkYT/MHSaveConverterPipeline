@@ -36,6 +36,24 @@ All four files are full-entropy AES (no `DISA`/`DIFF` magic in cleartext) →
 **decryption requires console-unique keys** (`boot9.bin` + `movable.sed`).
 There is no keyless path.
 
+#### Verified against real hardware (2026-06-10)
+
+Built save3ds and ran it against the real SD; findings that corrected the
+design:
+
+- **On-SD layout nests a device dir.** The numbered subfiles live at
+  `Nintendo 3DS/<ID0>/<ID1>/extdata/<high>/<low>/00000000/0000000{1..4}` — note
+  the extra `00000000` between `<low>` and the files (the loose `Example files`
+  folder had them flat). The detector must scan one level deeper.
+- **extdata id** = `<high><low>` from the path (e.g. `00000000` + `00001971` =
+  `0000000000001971`). Passed to `save3ds --sdext`.
+- **`--touch` with the gm9 keys succeeded** → keys decrypt this SD; the whole
+  decrypt premise is proven.
+- **`--extract` internal tree:** `icon` (14 016 B), `boss/` (empty), and
+  `user/system` + `user/system_backup` (4 726 152 each). **The cleartext
+  `system` is at `user/system`** — extract/import must use that subpath and
+  preserve `icon` + `boss/`.
+
 ### 1.3 `system` vs `system_backup` (verified empirically)
 
 - **3DS**: the two are **byte-for-byte identical** (0 bytes differ).
