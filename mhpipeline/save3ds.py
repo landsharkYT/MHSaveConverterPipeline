@@ -18,9 +18,12 @@ def _repo_root():
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+# Cargo appends .exe on Windows.
+_EXE = ".exe" if os.name == "nt" else ""
+
 # Where ``Install Dependencies`` builds the binary (workspace target dir).
 DEFAULT_BINARY = os.path.join(
-    _repo_root(), "save3ds", "save3ds", "target", "release", "save3ds_fuse")
+    _repo_root(), "save3ds", "save3ds", "target", "release", "save3ds_fuse" + _EXE)
 
 
 class Save3dsError(Exception):
@@ -39,7 +42,10 @@ def binary_path(override=None):
 
 def is_built(override=None):
     path = binary_path(override)
-    return os.path.isfile(path) and os.access(path, os.X_OK)
+    if not os.path.isfile(path):
+        return False
+    # On Windows the X_OK bit isn't meaningful for .exe files.
+    return True if os.name == "nt" else os.access(path, os.X_OK)
 
 
 def _key_args(sd_root, key_set):

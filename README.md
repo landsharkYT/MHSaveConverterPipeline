@@ -44,11 +44,20 @@ git clone --recurse-submodules <this-repo>
 cd MHSaveConverterPipeline
 
 python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt        # or: pip install -e .
+source .venv/bin/activate               # Windows: .venv\Scripts\activate
+pip install -r requirements.txt         # or: pip install -e .
 ```
 
 (If you cloned without `--recurse-submodules`: `git submodule update --init`.)
+
+### Platform notes
+
+- **Linux/macOS:** `[4] Install Dependencies` can install Rust for you.
+- **Windows:** auto-installing Rust isn't supported — install it once from
+  <https://rustup.rs> (run `rustup-init.exe`), then run `[4]`; it builds
+  `save3ds_fuse.exe` and installs the Python deps. save3ds uses no FUSE here
+  (extract/import only), so Windows is supported. Config/backups live under
+  `%APPDATA%\mhsaveconverter`.
 
 ## Usage
 

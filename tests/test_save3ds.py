@@ -9,6 +9,11 @@ sys.path.insert(0, ROOT)
 
 from mhpipeline import save3ds
 
+# The fake binary below is a POSIX shell script; the argv-assembly tests that
+# execute it are skipped on Windows (the wrapper logic itself is identical).
+posix_only = pytest.mark.skipif(os.name == "nt",
+                                reason="fake binary is a /bin/sh script")
+
 
 class FakeKeys:
     boot9 = "/keys/boot9.bin"
@@ -38,6 +43,7 @@ def test_not_built_raises(tmp_path):
         save3ds.touch("/sd", "id", FakeKeys(), binary=missing)
 
 
+@posix_only
 def test_touch_argv(tmp_path):
     bin_path = str(tmp_path / "save3ds_fuse")
     dump = str(tmp_path / "args.txt")
@@ -51,6 +57,7 @@ def test_touch_argv(tmp_path):
     ]
 
 
+@posix_only
 def test_extract_argv_and_creates_dest(tmp_path):
     bin_path = str(tmp_path / "save3ds_fuse")
     dump = str(tmp_path / "args.txt")
@@ -63,6 +70,7 @@ def test_extract_argv_and_creates_dest(tmp_path):
     assert "--sd" in args and "--boot9" in args and "--movable" in args
 
 
+@posix_only
 def test_import_argv(tmp_path):
     bin_path = str(tmp_path / "save3ds_fuse")
     dump = str(tmp_path / "args.txt")
@@ -74,6 +82,7 @@ def test_import_argv(tmp_path):
     assert args[:4] == ["--sdext", "ID", src, "--import"]
 
 
+@posix_only
 def test_nonzero_exit_raises(tmp_path):
     bin_path = str(tmp_path / "save3ds_fuse")
     make_fake_binary(bin_path, exit_code=2)

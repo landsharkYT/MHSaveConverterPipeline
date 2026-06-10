@@ -70,7 +70,7 @@ def check():
 # --------------------------------------------------------------------------- #
 # bootstrap
 # --------------------------------------------------------------------------- #
-def install(run=subprocess.run, log=print, shell=os.environ.get("SHELL", "/bin/sh")):
+def install(run=subprocess.run, log=print):
     """Install Rust (if needed), build save3ds_fuse, and pip-install Python deps.
 
     Returns a fresh :func:`check` report. ``run`` is injectable for testing.
@@ -86,6 +86,11 @@ def install(run=subprocess.run, log=print, shell=os.environ.get("SHELL", "/bin/s
 
 
 def _install_rust(run, log):
+    if os.name == "nt":
+        raise DepError(
+            "Automatic Rust install isn't supported on Windows. Install Rust "
+            "from https://rustup.rs (run rustup-init.exe), then re-run Install "
+            "Dependencies — the rest of the bootstrap works on Windows.")
     log("Installing Rust via rustup (%s) ..." % RUSTUP_URL)
     # Download the installer and run it non-interactively.
     script = run(["curl", "--proto", "=https", "--tlsv1.2", "-sSf", RUSTUP_URL],
