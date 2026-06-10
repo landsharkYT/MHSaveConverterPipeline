@@ -1,0 +1,28 @@
+# --- wrapper runtime artifacts ---
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Rust build output (save3ds submodule builds here)
+target/
+
+# local config / backups / scratch produced by the wrapper at runtime
+*.bak-*
+/tmp_work/
+/backups/
+
+# editor / OS
+.DS_Store
+.idea/
+.vscode/
+
+# tool server lockfiles
+.opencode/
+
+# never commit real saves or console keys
+Example files/
+*.sed
+*_boot9_00.bin
+*_boot11_00.bin
+essential.exefs
