@@ -2,8 +2,8 @@
 
 The SD root comes from the profile. We don't assume a specific console ID0/ID1
 or region — instead we detect the extdata by content: the directory that holds
-``00000003`` and ``00000004`` subfiles at the encrypted size. The 16-digit
-extdata id is read from the path: the two components right after ``extdata``
+the two encrypted save-sized payload files. The 16-digit extdata id is read
+from the path: the two components right after ``extdata``
 (``extdata/<high8>/<low8>``).
 
 Real SD layout nests the numbered subfiles one level deeper, under a device
@@ -22,9 +22,14 @@ from dataclasses import dataclass
 
 from mhpipeline.formats import SIZE_3DS_EXTDATA_ENCRYPTED
 
-# The two subfiles that back system / system_backup; their encrypted size is the
-# signature we match on.
-SIGNATURE_SUBFILES = ("00000003", "00000004")
+# Real-world MHXX archives have been seen with the two save-sized encrypted
+# payloads in either 00000002+00000003 or 00000003+00000004. Accept both
+# layouts; unrelated extdata is still filtered out by the exact file numbers and
+# the exact encrypted size.
+SIGNATURE_VARIANTS = (
+    ("00000002", "00000003"),
+    ("00000003", "00000004"),
+)
 _HEX = set(string.hexdigits)
 
 
@@ -46,11 +51,14 @@ class ExtdataLocation:
 def _looks_like_mhxx_extdata(directory):
     if not os.path.isdir(directory):
         return False
-    for name in SIGNATURE_SUBFILES:
-        f = os.path.join(directory, name)
-        if not os.path.isfile(f) or os.path.getsize(f) != SIZE_3DS_EXTDATA_ENCRYPTED:
-            return False
-    return True
+    for variant in SIGNATURE_VARIANTS:
+        if all(
+            os.path.isfile(os.path.join(directory, name))
+            and os.path.getsize(os.path.join(directory, name)) == SIZE_3DS_EXTDATA_ENCRYPTED
+            for name in variant
+        ):
+            return True
+    return False
 
 
 def _is_hex8(value):
