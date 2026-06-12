@@ -61,6 +61,19 @@ pip install -r requirements.txt         # or: pip install -e .
 
 ## Usage
 
+Easiest — use the launcher (creates the venv, installs Python deps, then runs):
+
+```bash
+./run.sh        # Linux/macOS
+run.bat         # Windows (or double-click it in Explorer)
+```
+
+The launcher is idempotent: it only sets up the venv/deps when missing or when
+`requirements.txt` changes, and initializes git submodules if needed. Rust and
+save3ds are still built from the app's **[4] Install Dependencies** menu.
+
+Or run it directly (if you manage the venv yourself):
+
 ```bash
 python -m mhpipeline        # or the `mhsaveconvert` command if pip-installed
 ```
