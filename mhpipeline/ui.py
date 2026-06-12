@@ -20,7 +20,7 @@ BRIGHT = Style.BRIGHT
 NORMAL = Style.NORMAL
 
 
-def banner(text="MH SAVE PIPE"):
+def banner(text="MH SAVE CONVERT"):
     tprint(text, font="tarty1")
 
 
