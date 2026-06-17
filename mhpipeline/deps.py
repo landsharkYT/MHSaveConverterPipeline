@@ -10,10 +10,14 @@ real system.
 """
 
 import importlib.util
+import io
 import os
 import shutil
 import subprocess
 import sys
+import tempfile
+import urllib.request
+import zipfile
 from dataclasses import dataclass, field
 from typing import List
 
@@ -26,10 +30,91 @@ def _repo_root():
 
 SAVE3DS_FUSE_DIR = os.path.join(_repo_root(), "save3ds", "save3ds", "save3ds_fuse")
 REQUIREMENTS = os.path.join(_repo_root(), "requirements.txt")
+SUBMODULES_LOCK = os.path.join(_repo_root(), "submodules.lock")
+PARENT_REPO_URL = "https://github.com/landsharkYT/MHSaveConverterPipeline"
 PYTHON_DEPS = ("art", "colorama", "sshkeyboard")
 
 RUSTUP_URL = "https://sh.rustup.rs"
 AES_RUSTFLAGS = "-C target-feature=+aes"
+
+
+class DepError(Exception):
+    """A bootstrap step failed."""
+
+
+# --------------------------------------------------------------------------- #
+# source submodules (fetched WITHOUT git, so ZIP downloads work)
+# --------------------------------------------------------------------------- #
+def read_submodule_lock(path=SUBMODULES_LOCK):
+    """Return [(rel_path, url, commit), ...] from submodules.lock."""
+    entries = []
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = line.split()
+            if len(parts) == 3:
+                entries.append((parts[0], parts[1], parts[2]))
+    return entries
+
+
+def _submodule_present(rel_path):
+    full = os.path.join(_repo_root(), rel_path)
+    return os.path.isdir(full) and any(os.scandir(full))
+
+
+def sources_present():
+    try:
+        entries = read_submodule_lock()
+    except OSError:
+        return False
+    return all(_submodule_present(p) for p, _, _ in entries)
+
+
+def _archive_url(url, commit):
+    base = url[:-4] if url.endswith(".git") else url
+    return "%s/archive/%s.zip" % (base, commit)
+
+
+def _open_url(url):
+    request = urllib.request.Request(url, headers={"User-Agent": "mhpipeline"})
+    return urllib.request.urlopen(request)
+
+
+def _fetch_one(rel_path, url, commit, log, opener):
+    full = os.path.join(_repo_root(), rel_path)
+    log("Downloading %s @ %s ..." % (rel_path, commit[:10]))
+    with opener(_archive_url(url, commit)) as resp:
+        data = resp.read()
+    tmp = tempfile.mkdtemp()
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            zf.extractall(tmp)
+        roots = [os.path.join(tmp, n) for n in os.listdir(tmp)
+                 if os.path.isdir(os.path.join(tmp, n))]
+        if len(roots) != 1:
+            raise DepError("unexpected archive layout for %s" % rel_path)
+        os.makedirs(full, exist_ok=True)
+        for name in os.listdir(roots[0]):
+            src = os.path.join(roots[0], name)
+            dst = os.path.join(full, name)
+            if os.path.isdir(dst):
+                shutil.rmtree(dst)
+            elif os.path.exists(dst):
+                os.remove(dst)
+            shutil.move(src, dst)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def fetch_sources(log=print, opener=_open_url, force=False):
+    """Populate missing source submodules from submodules.lock (no git needed)."""
+    for rel_path, url, commit in read_submodule_lock():
+        if force or not _submodule_present(rel_path):
+            _fetch_one(rel_path, url, commit, log, opener)
+        else:
+            log("%s already present." % rel_path)
 
 
 @dataclass
@@ -55,6 +140,9 @@ class DepReport:
 def check():
     """Report whether every dependency the converters need is present."""
     report = DepReport()
+    report.items.append(DepStatus("source submodules", sources_present(),
+                                  "present" if sources_present() else
+                                  "missing (will be fetched by Install Dependencies)"))
     cargo = shutil.which("cargo")
     report.items.append(DepStatus("cargo (Rust toolchain)", cargo is not None,
                                   cargo or "not found"))
@@ -75,6 +163,16 @@ def install(run=subprocess.run, log=print):
 
     Returns a fresh :func:`check` report. ``run`` is injectable for testing.
     """
+    if not sources_present():
+        log("Source submodules missing (e.g. ZIP download) — fetching ...")
+        try:
+            fetch_sources(log=log)
+        except (OSError, DepError, zipfile.BadZipFile) as error:
+            raise DepError(
+                "Could not fetch the source submodules automatically (%s). "
+                "Install Git and run:\n  git clone --recurse-submodules %s"
+                % (error, PARENT_REPO_URL))
+
     if shutil.which("cargo") is None:
         _install_rust(run, log)
     else:
@@ -105,6 +203,11 @@ def _install_rust(run, log):
 
 
 def _build_save3ds(run, log):
+    if not os.path.isfile(os.path.join(SAVE3DS_FUSE_DIR, "Cargo.toml")):
+        raise DepError(
+            "save3ds source is missing at %s — the submodule wasn't fetched. "
+            "Re-run Install Dependencies (it fetches sources), or clone with "
+            "git clone --recurse-submodules %s" % (SAVE3DS_FUSE_DIR, PARENT_REPO_URL))
     cargo = shutil.which("cargo") or os.path.expanduser("~/.cargo/bin/cargo")
     log("Building save3ds_fuse (release, no-FUSE, hardware AES) ...")
     env = dict(os.environ)
@@ -130,7 +233,3 @@ def _install_python_deps(run, log):
     if completed.returncode != 0:
         raise DepError("pip install failed")
     log("Python dependencies installed.")
-
-
-class DepError(Exception):
-    """A bootstrap step failed."""

@@ -50,6 +50,10 @@ pip install -r requirements.txt         # or: pip install -e .
 
 (If you cloned without `--recurse-submodules`: `git submodule update --init`.)
 
+**Downloaded the ZIP instead of cloning?** GitHub ZIPs don't include submodules,
+but that's fine: **[4] Install Dependencies** fetches the pinned save3ds /
+converter sources for you (from `submodules.lock`), no git required.
+
 ### Platform notes
 
 - **Linux/macOS:** `[4] Install Dependencies` can install Rust for you.

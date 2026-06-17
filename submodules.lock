@@ -1,0 +1,6 @@
+# Pinned submodule sources, used to fetch them WITHOUT git (e.g. for users who
+# downloaded a GitHub ZIP, which does not include submodule contents).
+# Format, whitespace-separated:  <path> <repo-url> <commit>
+# Keep in sync with .gitmodules + `git submodule status` (a test enforces this).
+save3ds/save3ds https://github.com/landsharkYT/save3ds.git 4627a45ab239780951bed2331933facfdf7d5392
+MHXXGUSaveConvert/MHGU-MHXX-Save-Converter-Script https://github.com/landsharkYT/MHGU-MHXX-Save-Converter-Script.git 4d2208dc1204193100616d23947851fa534dddff
