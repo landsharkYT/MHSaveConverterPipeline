@@ -22,14 +22,11 @@ from dataclasses import dataclass
 
 from mhpipeline.formats import SIZE_3DS_EXTDATA_ENCRYPTED
 
-# Real-world MHXX archives have been seen with the two save-sized encrypted
-# payloads in either 00000002+00000003 or 00000003+00000004. Accept both
-# layouts; unrelated extdata is still filtered out by the exact file numbers and
-# the exact encrypted size.
-SIGNATURE_VARIANTS = (
-    ("00000002", "00000003"),
-    ("00000003", "00000004"),
-)
+# The MHXX save (system + system_backup) appears as two device files of exactly
+# this encrypted size. Their numbering is NOT stable (seen as 03+04 and 02+04),
+# so detect by content: a leaf holding >= 2 files of the exact encrypted size.
+# The size is specific enough that unrelated extdata won't match.
+MIN_PAYLOADS = 2
 _HEX = set(string.hexdigits)
 
 
@@ -51,13 +48,15 @@ class ExtdataLocation:
 def _looks_like_mhxx_extdata(directory):
     if not os.path.isdir(directory):
         return False
-    for variant in SIGNATURE_VARIANTS:
-        if all(
-            os.path.isfile(os.path.join(directory, name))
-            and os.path.getsize(os.path.join(directory, name)) == SIZE_3DS_EXTDATA_ENCRYPTED
-            for name in variant
-        ):
-            return True
+    matches = 0
+    try:
+        for entry in os.scandir(directory):
+            if entry.is_file() and entry.stat().st_size == SIZE_3DS_EXTDATA_ENCRYPTED:
+                matches += 1
+                if matches >= MIN_PAYLOADS:
+                    return True
+    except OSError:
+        return False
     return False
 
 
