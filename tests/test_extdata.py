@@ -56,6 +56,15 @@ def test_finds_alternate_real_layout(tmp_path):
     assert found[0].extdata_id == "0000000000001971"
 
 
+def test_finds_non_adjacent_payloads(tmp_path):
+    # Real SD seen with the two payloads at 00000002 + 00000004 (not adjacent).
+    make_extdata(str(tmp_path), low="00001971", nested=True,
+                 variant=("00000002", "00000004"))
+    found = extdata.find_mhxx_extdata(str(tmp_path))
+    assert len(found) == 1
+    assert found[0].extdata_id == "0000000000001971"
+
+
 def test_wrong_size_not_matched(tmp_path):
     make_extdata(str(tmp_path), good=False)
     assert extdata.find_mhxx_extdata(str(tmp_path)) == []
